@@ -1,23 +1,19 @@
 package ru.ertelecom.rabbitmqservice.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
-
-import javax.persistence.CascadeType;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
+import lombok.NoArgsConstructor;
+import javax.persistence.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-
-
 @Data
 @Entity
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class RabbitMQMessage {
-
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;

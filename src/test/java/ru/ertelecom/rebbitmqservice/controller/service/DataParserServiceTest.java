@@ -1,64 +1,57 @@
 package ru.ertelecom.rebbitmqservice.controller.service;
 
-import static org.junit.Assert.assertEquals;
 import static org.mockito.Mockito.*;
+import static org.junit.Assert.*;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.Test;
+import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.MockitoJUnitRunner;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import ru.ertelecom.rabbitmqservice.model.Action;
 import ru.ertelecom.rabbitmqservice.model.RabbitMQMessage;
-import ru.ertelecom.rabbitmqservice.repository.RabbitMQRepository;
 import ru.ertelecom.rabbitmqservice.service.DataParserService;
 
-@ExtendWith(MockitoExtension.class)
+@RunWith(MockitoJUnitRunner.class)
 public class DataParserServiceTest {
 
     @Mock
     private ObjectMapper objectMapper;
 
     @InjectMocks
-    private DataParserService dataParserService;
-
+    private DataParserService service;
 
     @Test
-    public void testParseData_ValidJsonData() throws JsonProcessingException {
-        // Подготовка данных
-        String jsonData = "{\"id\": 123, \"action\": {\"action\": \"test_action\"}}";
-        RabbitMQMessage message = new RabbitMQMessage();
-
-        // Настройка поведения objectMapper
-        RabbitMQMessage parsedMessage = new RabbitMQMessage();
+    public void testParseData_ValidJson() throws Exception {
+        String jsonData = "{\"id\":1, \"action\":{\"action\":\"Test\"}, \"incident\":{\"incidentId\":123}}";
+        RabbitMQMessage mockedMessage = new RabbitMQMessage();
         Action action = new Action();
-        action.setAction("test_action");
-        parsedMessage.setAction(action);
-        when(objectMapper.readValue(jsonData, RabbitMQMessage.class)).thenReturn(parsedMessage);
+        mockedMessage.setAction(action);  // Создаём и устанавливаем action
 
-        // Вызов метода для тестирования
-        dataParserService.parseData(jsonData, message);
+        // Настройка Mockito для возврата объекта mockedMessage, который уже содержит action.
+        when(objectMapper.readValue(anyString(), eq(RabbitMQMessage.class))).thenReturn(mockedMessage);
 
-        // Проверка, что поля message были установлены правильно
-        assertEquals(parsedMessage.getAction().getAction(), message.getAction().getAction());
+        service.parseData(jsonData, mockedMessage);
+
+        assertNotNull(mockedMessage.getAction());
+        verify(objectMapper, times(1)).readValue(jsonData, RabbitMQMessage.class);
     }
 
-    @Test
-    public void testParseData_InvalidJsonData() {
-        // Подготовка данных
-        String jsonData = null;
+
+    @Test(expected = DataParserService.DataParsingException.class)
+    public void testParseData_InvalidJson() throws Exception {
+        String jsonData = "invalid json";
         RabbitMQMessage message = new RabbitMQMessage();
 
-        // Вызов метода для тестирования
-        dataParserService.parseData(jsonData, message);
+        // Настройка ObjectMapper для выброса JsonProcessingException при попытке разобрать невалидный JSON
+        when(objectMapper.readValue(jsonData, RabbitMQMessage.class)).thenThrow(new JsonProcessingException("Parsing error") {});
 
-        // Проверка, что не произошло исключений и что данные message не изменились
-        assertEquals(null, message.getAction());
+        // Вызов метода, который должен обработать исключение
+        service.parseData(jsonData, message);
+
+        // Mockito.verify() для проверки, что метод readValue() был вызван с ожидаемыми параметрами
+        verify(objectMapper).readValue(jsonData, RabbitMQMessage.class);
     }
-
-    // Дополнительные тесты можно добавить для обработки других сценариев и ошибок
 }
-

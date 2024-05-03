@@ -1,47 +1,44 @@
 package ru.ertelecom.rabbitmqservice.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import ru.ertelecom.rabbitmqservice.model.RabbitMQMessage;
 import org.springframework.stereotype.Service;
+import ru.ertelecom.rabbitmqservice.model.RabbitMQMessage;
 
 @Service
+@RequiredArgsConstructor
 public class DataParserService {
 
+    private static final Logger logger = LoggerFactory.getLogger(DataParserService.class);
     private final ObjectMapper objectMapper;
 
-    @Autowired
-    public DataParserService(ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
-
-    private static final Logger logger = LoggerFactory.getLogger(DataParserService.class);
-
-    public void parseData(String jsonData, RabbitMQMessage message) {
+    public void parseData(String jsonData, RabbitMQMessage message) throws DataParsingException {
         try {
             if (jsonData == null || jsonData.isEmpty()) {
-                logger.error("Получены некорректные данные для парсинга.");
-                return; // или выбросить исключение
+                logger.error("Received invalid data for parsing.");
+                throw new DataParsingException("Empty or null JSON data provided.");
             }
 
-            // Парсим JSON данные в объект
             RabbitMQMessage data = objectMapper.readValue(jsonData, RabbitMQMessage.class);
-
-            // Устанавливаем значения всех полей объекта RabbitMQMessage на основе данных из RabbitMQMessageData
             message.setId(data.getId());
             message.setAction(data.getAction());
             message.setIncident(data.getIncident());
             message.setFilterIds(data.getFilterIds());
-
-            // Дополнительная логика по обработке данных, если необходимо
         } catch (Exception e) {
-            logger.error("Ошибка парсинга данных: {}", e.getMessage());
-            // Дополнительная логика обработки ошибок
+            logger.error("Data parsing error: {}", e.getMessage());
+            throw new DataParsingException("Error parsing data: " + e.getMessage(), e);
         }
     }
 
-}
+    public static class DataParsingException extends Exception {
+        public DataParsingException(String message) {
+            super(message);
+        }
 
+        public DataParsingException(String message, Throwable cause) {
+            super(message, cause);
+        }
+    }
+}
