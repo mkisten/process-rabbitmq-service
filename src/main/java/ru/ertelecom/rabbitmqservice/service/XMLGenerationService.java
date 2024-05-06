@@ -1,11 +1,11 @@
 package ru.ertelecom.rabbitmqservice.service;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import ru.ertelecom.rabbitmqservice.model.Action;
+import ru.ertelecom.rabbitmqservice.model.Incident;
 import ru.ertelecom.rabbitmqservice.model.RabbitMQMessage;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -16,13 +16,16 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.StringWriter;
 
+@Slf4j
 @Service
 public class XMLGenerationService {
 
-    private static final Logger logger = LoggerFactory.getLogger(DataParserService.class);
-
     public String generateXML(RabbitMQMessage message) {
         try {
+            if (message == null) {
+                throw new IllegalArgumentException("Message object cannot be null");
+            }
+
             // Создаем построитель документов
             DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
             DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
@@ -35,34 +38,44 @@ public class XMLGenerationService {
             doc.appendChild(rootElement);
 
             // Добавляем поля в XML
-            Element id = doc.createElement("id");
-            id.appendChild(doc.createTextNode(String.valueOf(message.getId())));
-            rootElement.appendChild(id);
+            addElement(doc, rootElement, "id", String.valueOf(message.getId()));
 
-            Element action = doc.createElement("action");
             Action actionObject = message.getAction();
-            action.appendChild(doc.createTextNode(actionObject.getAction()));
-            rootElement.appendChild(action);
+            if (actionObject != null) {
+                addElement(doc, rootElement, "action", actionObject.getAction());
+            }
 
-            Element incident = doc.createElement("incident");
-            rootElement.appendChild(incident);
+            Incident incident = message.getIncident();
+            if (incident != null) {
+                Element incidentElement = doc.createElement("incident");
+                rootElement.appendChild(incidentElement);
 
-            // Добавляем поля инцидента
-            Element incidentId = doc.createElement("incidentId");
-            incidentId.appendChild(doc.createTextNode(String.valueOf(message.getIncident().getIncidentId())));
-            incident.appendChild(incidentId);
+                addElement(doc, incidentElement, "incidentId", String.valueOf(incident.getIncidentId()));
+                // Добавьте другие поля инцидента, если необходимо
+            }
 
             // Преобразуем документ в строку XML
+            StringWriter writer = new StringWriter();
             TransformerFactory transformerFactory = TransformerFactory.newInstance();
             Transformer transformer = transformerFactory.newTransformer();
-            StringWriter writer = new StringWriter();
             transformer.transform(new DOMSource(doc), new StreamResult(writer));
+            String xmlString = writer.toString();
 
-            return writer.toString();
-        } catch (Exception e) {
-            logger.error("Error generating XML: {}", e.getMessage(), e);
-            // Вернуть null или какое-то сообщение об ошибке
-            return null;
+            log.info("XML успешно сгенерирован: {}", xmlString); // Логируем успешную генерацию XML
+            return xmlString;
+        }catch (IllegalArgumentException e) {
+            throw e;
         }
+        catch (Exception e) {
+            log.error("Ошибка при генерации XML: {}", e.getMessage(), e); // Логируем ошибку при генерации XML
+            // Бросаем RuntimeException вместо возврата null
+            throw new RuntimeException("Ошибка при генерации XML", e);
+        }
+    }
+
+    private void addElement(Document doc, Element parentElement, String tagName, String textContent) {
+        Element element = doc.createElement(tagName);
+        element.appendChild(doc.createTextNode(textContent));
+        parentElement.appendChild(element);
     }
 }

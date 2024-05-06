@@ -2,34 +2,55 @@ package ru.ertelecom.rabbitmqservice.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import ru.ertelecom.rabbitmqservice.model.RabbitMQMessage;
 
+import java.io.IOException;
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DataParserService {
 
-    private static final Logger logger = LoggerFactory.getLogger(DataParserService.class);
     private final ObjectMapper objectMapper;
 
     public void parseData(String jsonData, RabbitMQMessage message) throws DataParsingException {
         try {
-            if (jsonData == null || jsonData.isEmpty()) {
-                logger.error("Received invalid data for parsing.");
-                throw new DataParsingException("Empty or null JSON data provided.");
-            }
+            validateJsonData(jsonData);
+            populateRabbitMQMessage(jsonData, message);
+        } catch (Exception e) {
+            handleParsingException(e);
+        }
+    }
 
+    private void validateJsonData(String jsonData) throws DataParsingException {
+        if (StringUtils.isEmpty(jsonData)) {
+            String errorMessage = "Предоставлены пустые или нулевые JSON данные.";
+            log.error("Получены недопустимые данные для парсинга: {}", errorMessage);
+            throw new DataParsingException(errorMessage);
+        } else {
+            log.debug("JSON данные успешно прошли проверку.");
+        }
+    }
+
+    private void populateRabbitMQMessage(String jsonData, RabbitMQMessage message) throws DataParsingException {
+        try {
             RabbitMQMessage data = objectMapper.readValue(jsonData, RabbitMQMessage.class);
             message.setId(data.getId());
             message.setAction(data.getAction());
             message.setIncident(data.getIncident());
             message.setFilterIds(data.getFilterIds());
-        } catch (Exception e) {
-            logger.error("Data parsing error: {}", e.getMessage());
-            throw new DataParsingException("Error parsing data: " + e.getMessage(), e);
+            log.info("RabbitMQMessage успешно заполнен.");
+        } catch (IOException e) {
+            throw new DataParsingException("Ошибка парсинга данных: " + e.getMessage(), e);
         }
+    }
+
+    private void handleParsingException(Exception e) throws DataParsingException {
+        log.error("Ошибка парсинга данных: {}", e.getMessage(), e);
+        throw new DataParsingException("Ошибка парсинга данных " + e.getMessage(), e);
     }
 
     public static class DataParsingException extends Exception {

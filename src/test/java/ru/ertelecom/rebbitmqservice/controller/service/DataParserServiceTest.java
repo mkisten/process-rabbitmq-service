@@ -1,7 +1,9 @@
 package ru.ertelecom.rebbitmqservice.controller.service;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
-import static org.junit.Assert.*;
+
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.junit.Test;
@@ -13,6 +15,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import ru.ertelecom.rabbitmqservice.model.Action;
 import ru.ertelecom.rabbitmqservice.model.RabbitMQMessage;
 import ru.ertelecom.rabbitmqservice.service.DataParserService;
+
+import java.io.IOException;
 
 @RunWith(MockitoJUnitRunner.class)
 public class DataParserServiceTest {
@@ -39,6 +43,12 @@ public class DataParserServiceTest {
         verify(objectMapper, times(1)).readValue(jsonData, RabbitMQMessage.class);
     }
 
+    @Test
+    public void testParseEmptyData() {
+        RabbitMQMessage message = new RabbitMQMessage();
+        String jsonData = "";
+        assertThrows(DataParserService.DataParsingException.class, () -> service.parseData(jsonData, message));
+    }
 
     @Test(expected = DataParserService.DataParsingException.class)
     public void testParseData_InvalidJson() throws Exception {
