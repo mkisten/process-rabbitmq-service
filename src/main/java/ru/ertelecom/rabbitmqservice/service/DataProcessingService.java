@@ -11,11 +11,12 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class DataProcessingService {
+public class DataProcessingService implements IDataProcessingService{
 
     private final RabbitMQRepository rabbitMQRepository;
     private final DataParserService dataParserService;
 
+    @Override
     public void processData() {
         List<RabbitMQMessage> messages = rabbitMQRepository.findByStatus("NEW");
 
@@ -34,7 +35,8 @@ public class DataProcessingService {
         rabbitMQRepository.saveAll(messages);
     }
 
-    private void processMessage(RabbitMQMessage message) {
+    @Override
+    public void processMessage(RabbitMQMessage message) {
         message.setStatus("PARSED");
         message.setParsedDt(LocalDateTime.now());
         // Optional: Additional processing logic

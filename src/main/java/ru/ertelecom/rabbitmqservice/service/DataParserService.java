@@ -12,10 +12,11 @@ import java.io.IOException;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class DataParserService {
+public class DataParserService implements IDataParserService {
 
     private final ObjectMapper objectMapper;
 
+    @Override
     public void parseData(String jsonData, RabbitMQMessage message) throws DataParsingException {
         try {
             validateJsonData(jsonData);
@@ -25,7 +26,8 @@ public class DataParserService {
         }
     }
 
-    private void validateJsonData(String jsonData) throws DataParsingException {
+    @Override
+    public void validateJsonData(String jsonData) throws DataParsingException {
         if (StringUtils.isEmpty(jsonData)) {
             String errorMessage = "Предоставлены пустые или нулевые JSON данные.";
             log.error("Получены недопустимые данные для парсинга: {}", errorMessage);
@@ -35,7 +37,8 @@ public class DataParserService {
         }
     }
 
-    private void populateRabbitMQMessage(String jsonData, RabbitMQMessage message) throws DataParsingException {
+    @Override
+    public void populateRabbitMQMessage(String jsonData, RabbitMQMessage message) throws DataParsingException {
         try {
             RabbitMQMessage data = objectMapper.readValue(jsonData, RabbitMQMessage.class);
             message.setId(data.getId());
